@@ -64,6 +64,7 @@ $DOCKER_RUN --rm \
 	--env DELPHIX_SIGNATURE_VERSIONS \
 	--env DELPHIX_UPGRADE_MINIMUM_VERSION \
 	--env DELPHIX_UPGRADE_MINIMUM_REBOOT_OPTIONAL_VERSION \
+	--env UPSTREAM_PRODUCT_BRANCH \
 	--volume "$TOP:/opt/appliance-build" \
 	--workdir "/opt/appliance-build" \
 	appliance-build "$@"

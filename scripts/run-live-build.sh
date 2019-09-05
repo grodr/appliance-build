@@ -15,6 +15,12 @@
 # limitations under the License.
 #
 
+#
+# The appliance-build upstream branch. This should be updated by the release
+# lead on branching.
+#
+BRANCH="master"
+
 TOP=$(git rev-parse --show-toplevel 2>/dev/null)
 
 if [[ -z "$TOP" ]]; then
@@ -129,35 +135,72 @@ while ! curl --output /dev/null --silent --head --fail \
 done
 set -o errexit
 
+pkg_mirror_secondary=''
 if [[ -n "$DELPHIX_PACKAGE_MIRROR_SECONDARY" ]]; then
-	sed "s|@@URL@@|$DELPHIX_PACKAGE_MIRROR_SECONDARY|" \
-		<config/archives/delphix-secondary-mirror.list.in \
-		>config/archives/delphix-secondary-mirror.list
+	pkg_mirror_secondary="$DELPHIX_PACKAGE_MIRROR_SECONDARY"
+else
+	#
+	# If no secondary package mirror is provided, then pull in the latest
+	# mirror dataset for the build. If no latest dataset is found, then fail.
+	#
+	source_url="http://linux-package-mirror.delphix.com/$BRANCH/latest/"
+	pkg_mirror_secondary="$(curl -fLSs -o /dev/null -w '%{url_effective}' $source_url 2>/dev/null)"
+	if [[ "$?" -ne 0 ]]; then
+		echo "No URL found for PPA packages at $source_url."
+		kill -9 $APTLY_SERVE_PID
+		exit 1
+	fi
+
+	# The mirror hosts secondary packages in the "ppas" subdirectory.
+	pkg_mirror_secondary+="ppas"
 fi
 
+sed "s|@@URL@@|$pkg_mirror_secondary|" \
+	<config/archives/delphix-secondary-mirror.list.in \
+	>config/archives/delphix-secondary-mirror.list
+
+pkg_mirror_main=''
 if [[ -n "$DELPHIX_PACKAGE_MIRROR_MAIN" ]]; then
-	lb config \
-		--parent-mirror-bootstrap "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--parent-mirror-chroot "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--parent-mirror-chroot-security "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--parent-mirror-chroot-volatile "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--parent-mirror-chroot-backports "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--parent-mirror-binary "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--parent-mirror-binary-security "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--parent-mirror-binary-volatile "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--parent-mirror-binary-backports "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--mirror-bootstrap "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--mirror-chroot "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--mirror-chroot-security "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--mirror-chroot-volatile "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--mirror-chroot-backports "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--mirror-binary "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--mirror-binary-security "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--mirror-binary-volatile "$DELPHIX_PACKAGE_MIRROR_MAIN" \
-		--mirror-binary-backports "$DELPHIX_PACKAGE_MIRROR_MAIN"
+	pkg_mirror_main="$DELPHIX_PACKAGE_MIRROR_MAIN"
 else
-	lb config
+	#
+	# If no main package mirror is provided, then pull in the latest mirror
+	# dataset for the build. If no latest dataset is found, then fail.
+	#
+	source_url="http://linux-package-mirror.delphix.com/$BRANCH/latest/"
+	pkg_mirror_main="$(curl -fLSs -o /dev/null -w '%{url_effective}' $source_url)"
+	if [[ "$?" -ne 0 ]]; then
+		echo "No mirror URL found for ubuntu archive packages at $source_url."
+		kill -9 $APTLY_SERVE_PID
+		exit 1
+	fi
+
+	#
+	# The internal mirror hosts the primary ubuntu package repository in the
+	# "ubuntu" subdirectory.
+	#
+	pkg_mirror_main+="ubuntu"
 fi
+
+lb config \
+	--parent-mirror-bootstrap "$pkg_mirror_main" \
+	--parent-mirror-chroot "$pkg_mirror_main" \
+	--parent-mirror-chroot-security "$pkg_mirror_main" \
+	--parent-mirror-chroot-volatile "$pkg_mirror_main" \
+	--parent-mirror-chroot-backports "$pkg_mirror_main" \
+	--parent-mirror-binary "$pkg_mirror_main" \
+	--parent-mirror-binary-security "$pkg_mirror_main" \
+	--parent-mirror-binary-volatile "$pkg_mirror_main" \
+	--parent-mirror-binary-backports "$pkg_mirror_main" \
+	--mirror-bootstrap "$pkg_mirror_main" \
+	--mirror-chroot "$pkg_mirror_main" \
+	--mirror-chroot-security "$pkg_mirror_main" \
+	--mirror-chroot-volatile "$pkg_mirror_main" \
+	--mirror-chroot-backports "$pkg_mirror_main" \
+	--mirror-binary "$pkg_mirror_main" \
+	--mirror-binary-security "$pkg_mirror_main" \
+	--mirror-binary-volatile "$pkg_mirror_main" \
+	--mirror-binary-backports "$pkg_mirror_main"
 
 lb build
 
