@@ -15,12 +15,6 @@
 # limitations under the License.
 #
 
-#
-# The appliance-build upstream branch. This should be updated by the release
-# lead on branching.
-#
-BRANCH="master"
-
 TOP=$(git rev-parse --show-toplevel 2>/dev/null)
 
 if [[ -z "$TOP" ]]; then
@@ -133,7 +127,6 @@ while ! curl --output /dev/null --silent --head --fail \
 
 	sleep 1
 done
-set -o errexit
 
 pkg_mirror_secondary=''
 if [[ -n "$DELPHIX_PACKAGE_MIRROR_SECONDARY" ]]; then
@@ -143,11 +136,11 @@ else
 	# If no secondary package mirror is provided, then pull in the latest
 	# mirror dataset for the build. If no latest dataset is found, then fail.
 	#
-	source_url="http://linux-package-mirror.delphix.com/$BRANCH/latest/"
-	pkg_mirror_secondary="$(curl -fLSs -o /dev/null -w '%{url_effective}' $source_url 2>/dev/null)"
+	source_url="http://linux-package-mirror.delphix.com/$UPSTREAM_BRANCH/latest/"
+	pkg_mirror_secondary=$(curl -fLSs -o /dev/null -w '%{url_effective}' $source_url)
 	if [[ "$?" -ne 0 ]]; then
-		echo "No URL found for PPA packages at $source_url."
-		kill -9 $APTLY_SERVE_PID
+        kill -9 $APTLY_SERVE_PID
+        echo "No URL found for PPA packages at ${source_url}."
 		exit 1
 	fi
 
@@ -167,11 +160,11 @@ else
 	# If no main package mirror is provided, then pull in the latest mirror
 	# dataset for the build. If no latest dataset is found, then fail.
 	#
-	source_url="http://linux-package-mirror.delphix.com/$BRANCH/latest/"
-	pkg_mirror_main="$(curl -fLSs -o /dev/null -w '%{url_effective}' $source_url)"
+	source_url="http://linux-package-mirror.delphix.com/$UPSTREAM_BRANCH/latest/"
+	pkg_mirror_main=$(curl -fLSs -o /dev/null -w '%{url_effective}' $source_url)
 	if [[ "$?" -ne 0 ]]; then
-		echo "No mirror URL found for ubuntu archive packages at $source_url."
-		kill -9 $APTLY_SERVE_PID
+	    kill -9 $APTLY_SERVE_PID
+		echo "No mirror URL found for ubuntu archive packages at ${source_url}."
 		exit 1
 	fi
 
@@ -181,6 +174,7 @@ else
 	#
 	pkg_mirror_main+="ubuntu"
 fi
+set -o errexit
 
 lb config \
 	--parent-mirror-bootstrap "$pkg_mirror_main" \

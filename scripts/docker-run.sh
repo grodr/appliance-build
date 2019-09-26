@@ -38,6 +38,32 @@ else
 	DOCKER_RUN="docker run"
 fi
 
+#
+# Set UPSTREAM_BRANCH. This will determine which version of the linux package
+# mirror is used.
+#
+if [[ -z "$UPSTREAM_PRODUCT_BRANCH" ]]; then
+    echo "UPSTREAM_PRODUCT_BRANCH is not set."
+    if ! source ../branch.config; then
+        echo "No branch.config file found in repo root. Please create on with "
+        echo "contents BRANCH=\"<upstream-product-branch>\" or set the "
+        echo "UPSTREAM_PRODUCT_BRANCH environment variable and rebuild "
+        echo "(e.g. \"master\" or \"6.0\stage\")"
+        exit 1
+    fi
+    if [[ -z "$BRANCH" ]]; then
+        echo "BRANCH parameter was not sourced from branch.config. Please "
+        echo "ensure branch.config is properly formatted with "
+        echo "BRANCH=\"<upstream-product-branch>\""
+        exit 1
+    fi
+    echo "Defaulting to branch $BRANCH."
+    UPSTREAM_BRANCH="$BRANCH"
+else
+    UPSTREAM_BRANCH="$UPSTREAM_PRODUCT_BRANCH"
+fi
+echo "Running with UPSTREAM_BRANCH set to ${UPSTREAM_BRANCH}"
+
 $DOCKER_RUN --rm \
 	--privileged \
 	--network host \
@@ -64,7 +90,7 @@ $DOCKER_RUN --rm \
 	--env DELPHIX_SIGNATURE_VERSIONS \
 	--env DELPHIX_UPGRADE_MINIMUM_VERSION \
 	--env DELPHIX_UPGRADE_MINIMUM_REBOOT_OPTIONAL_VERSION \
-	--env UPSTREAM_PRODUCT_BRANCH \
+	--env UPSTREAM_BRANCH="$UPSTREAM_BRANCH"\
 	--volume "$TOP:/opt/appliance-build" \
 	--workdir "/opt/appliance-build" \
 	appliance-build "$@"

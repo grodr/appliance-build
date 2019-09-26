@@ -142,7 +142,7 @@ function build_ancillary_repository() {
 #    environment variables, and the script will work as expected.
 #
 
-upstream_branch="${UPSTREAM_PRODUCT_BRANCH:-master}"
+upstream_branch="${UPSTREAM_BRANCH:-master}"
 
 AWS_S3_URI_VIRTUALIZATION=$(resolve_s3_uri \
 	"$AWS_S3_URI_VIRTUALIZATION" \
